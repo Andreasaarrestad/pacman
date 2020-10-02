@@ -15,6 +15,7 @@
 from util import manhattanDistance
 from game import Directions
 import random, util
+import math
 
 from game import Agent
 
@@ -111,43 +112,151 @@ class MinimaxAgent(MultiAgentSearchAgent):
     Your minimax agent (question 2)
     """
 
+    # Function to maximize utility for pacman and minimize it for the ghosts
+    def max_value(self,gameState, depth):
+            
+        # Terminal-test
+        if gameState.isLose() or gameState.isWin():
+            return gameState.getScore()  # Returning the terminal score
+
+        # Temporarily setting no action as the best action
+        bestAction = Directions.STOP
+
+        # The worst move for pacman would be to minimize the score
+        v = -math.inf
+
+        # Get all available actions for pacman
+        pacmanActions = gameState.getLegalActions(0) #Pacman is agent nr 0
+        
+        for pacmanAction in pacmanActions:
+            utility = self.min_value(gameState.generateSuccessor(0, pacmanAction), depth, 1) 
+            if utility > v:
+                v = utility
+                bestAction = pacmanAction
+                
+        # Returning the best action if at the root level
+        if depth == 0:
+            return bestAction
+        else:
+            return v
+            
+    # Function to minimize utility for pacman and maximize it for the ghosts
+    def min_value(self,gameState, depth, agent):
+        
+        # Terminal-test
+        if gameState.isLose() or gameState.isWin():
+            return gameState.getScore()  # Returning the terminal score
+
+        # Get the next agent
+        nextAgent = (agent + 1) % gameState.getNumAgents()
+
+        # The worst move for a ghost agent would be to maximize the score
+        v = math.inf
+
+        # Get all available actions for current ghost
+        ghostActions = gameState.getLegalActions(agent)
+        
+        for ghostAction in ghostActions:
+            if nextAgent == 0: # Check if the next agent is pacman
+                if self.depth - depth == 1: # Checking for terminal depth
+                    utility = self.evaluationFunction(gameState.generateSuccessor(agent, ghostAction))
+                else:
+                    # Calling the max-agent function with the current action
+                    utility = self.max_value(gameState.generateSuccessor(agent, ghostAction), depth + 1)
+            else:
+                utility = self.min_value(gameState.generateSuccessor(agent, ghostAction), depth, nextAgent)
+            
+            if utility < v:
+                v = utility
+        return v
+
+
     def getAction(self, gameState):
-        """
-        Returns the minimax action from the current gameState using self.depth
-        and self.evaluationFunction.
 
-        Here are some method calls that might be useful when implementing minimax.
+        # Minimax initiation with pacman agent
+        return self.max_value(gameState, 0)
 
-        gameState.getLegalActions(agentIndex):
-        Returns a list of legal actions for an agent
-        agentIndex=0 means Pacman, ghosts are >= 1
-
-        gameState.generateSuccessor(agentIndex, action):
-        Returns the successor game state after an agent takes an action
-
-        gameState.getNumAgents():
-        Returns the total number of agents in the game
-
-        gameState.isWin():
-        Returns whether or not the game state is a winning state
-
-        gameState.isLose():
-        Returns whether or not the game state is a losing state
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
     Your minimax agent with alpha-beta pruning (question 3)
     """
 
+    # Function to maximize utility for pacman and minimize it for the ghosts
+    def max_value(self,gameState, depth, alpha, beta):
+            
+        # Terminal-test
+        if gameState.isLose() or gameState.isWin():
+            return gameState.getScore()  # Returning the terminal score
+
+        # Temporarily setting no action as the best action
+        bestAction = Directions.STOP
+
+        # The worst move for pacman would be to minimize the score
+        v = -math.inf
+
+        # Get all available actions for pacman
+        pacmanActions = gameState.getLegalActions(0) #Pacman is agent nr 0
+        
+        for pacmanAction in pacmanActions:
+            utility = self.min_value(gameState.generateSuccessor(0, pacmanAction), depth, 1, alpha, beta) 
+            if utility > v:
+                v = utility
+                bestAction = pacmanAction
+
+            # Lower bound for minimum utility for pacman
+            alpha = max(alpha, v)
+                
+            # Pruning the subtree if the minimal score is at least as high as beta
+            if v > beta:
+                return v
+                
+        # Returning the best action if at the root level
+        if depth == 0:
+            return bestAction
+        else:
+            return v
+            
+    # Function to minimize utility for pacman and maximize it for the ghosts
+    def min_value(self,gameState, depth, agent, alpha, beta):
+        
+        # Terminal-test
+        if gameState.isLose() or gameState.isWin():
+            return gameState.getScore()  # Returning the terminal score
+
+        # Get the next agent
+        nextAgent = (agent + 1) % gameState.getNumAgents()
+
+        # The worst move for a ghost agent would be to maximize the score
+        v = math.inf
+
+        # Get all available actions for current ghost
+        ghostActions = gameState.getLegalActions(agent)
+        
+        for ghostAction in ghostActions:
+            if nextAgent == 0: # Check if the next agent is pacman
+                if self.depth - depth == 1: # Checking for terminal depth
+                    utility = self.evaluationFunction(gameState.generateSuccessor(agent, ghostAction))
+                else:
+                    # Calling the max-agent function with the current action
+                    utility = self.max_value(gameState.generateSuccessor(agent, ghostAction), depth + 1, alpha, beta)
+            else:
+                utility = self.min_value(gameState.generateSuccessor(agent, ghostAction), depth, nextAgent, alpha, beta)
+            
+            if utility < v:
+                v = utility
+
+            # Upper bound for maximum utlity for the ghost
+            beta = min(beta, v)
+                
+            # Pruning the subtree if the maximum score is at least as low as alpha
+            if v < alpha:
+                return v
+        return v
+
     def getAction(self, gameState):
-        """
-        Returns the minimax action using self.depth and self.evaluationFunction
-        """
-        "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        return self.max_value(gameState,0,-math.inf,math.inf)
+
 
 class ExpectimaxAgent(MultiAgentSearchAgent):
     """
